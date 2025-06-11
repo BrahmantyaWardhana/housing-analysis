@@ -35,5 +35,6 @@ colSums(is.na(numeric_vars)) %>% sort(decreasing = TRUE)
 
 simple_regression <- function () {
   model.regression <- lm(SalePrice ~ . - Id, data = numeric_vars)
-  model.regression
+  summary <- summary(model.regression)
+  summary
 }
