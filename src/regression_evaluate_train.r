@@ -1,12 +1,15 @@
 #setwd("")
 #source("")
 
+set.seed(123)
 library(tidyverse)
 library(corrplot)
 library(broom)
 
 train <- read.csv("dataset/train.csv")
-test <- read.csv("dataset/test.csv")
+train_indices <- sample(1:nrow(train), 0.8 * nrow(train))  # 80% training, 20% validation
+test <- train[-train_indices, ]
+train <- train[train_indices, ]
 
 # analyzing dataset
 # Check missing values
@@ -67,6 +70,16 @@ predicting_data <- function() {
       MasVnrArea = ifelse(is.na(MasVnrArea), median(MasVnrArea, na.rm = TRUE), MasVnrArea)
     )
   
+  # Ensure test data has same columns as model
+  required_vars <- all.vars(formula(final_model))[-1]
+  missing_vars <- setdiff(required_vars, names(test_numeric))
+  
+  if(length(missing_vars) > 0) {
+    warning(paste("Missing variables in test data:", paste(missing_vars, collapse = ", ")))
+    # Add missing columns filled with
+    test_numeric[missing_vars] <- NA
+  }
+  
   # Make predictions
   predictions <- predict(final_model, newdata = test_numeric)
   
@@ -74,23 +87,32 @@ predicting_data <- function() {
   data.frame(Id = test$Id, SalePrice = predictions)
 }
 
-create_submission <- function() {
-  predictions <- predicting_data()
-  
-  # Ensure directory exists
-  if (!dir.exists("submissions")) {
-    dir.create("submissions")
-  }
-  
-  # Create timestamped filename
-  timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
-  filename <- paste0("submissions/submission_", timestamp, ".csv")
-  
-  # Write file
-  write.csv(predictions, filename, row.names = FALSE)
-  message(paste("Submission file created:", filename))
-  
-  return(predictions)
-}
+evaluate_predictions <- function() {
+  pred <- predicting_data()
 
-submission <- create_submission()
+  # residuals
+  eval_df <- data.frame(
+    Actual = test$SalePrice,
+    Predicted = pred$SalePrice
+  )
+
+  # basic metrics
+  residuals <- eval_df$Actual - eval_df$Predicted
+  
+  MEAN <- mean(residuals)
+  MEDIAN <- median(residuals)
+  SD <- sd(residuals)
+  Q1 <- quantile(residuals, 0.25)
+  Q3 <- quantile(residuals, 0.75)
+
+  RMSE = sqrt(mean(residuals^2))
+  
+  # Calculate RSE
+  n <- nrow(eval_df)
+  p <- length(coef(simple_regression_final())) - 1
+  RSE <- sqrt(sum(residuals^2) / (n - p - 1))
+  
+  named_list <- list(q1 = Q1, q3 = Q3, mean = MEAN, median = MEDIAN,
+                     sd = SD, rse = RSE, rmse = RMSE)
+  named_list
+}
