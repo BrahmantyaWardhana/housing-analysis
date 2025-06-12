@@ -116,3 +116,6 @@ evaluate_predictions <- function() {
                      sd = SD, rse = RSE, rmse = RMSE)
   named_list
 }
+
+median_baseline_pred <- median(train$SalePrice)  
+print(baseline_rmse <- sqrt(mean((test$SalePrice - median_baseline_pred)^2)))
