@@ -137,4 +137,4 @@ rse = 31391.85
 rmse = 30408.91
 ```
 
-The high variance in residuals indicates that the model
+The high variance in residuals indicates that the model is not reliable.
